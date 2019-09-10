@@ -18,11 +18,13 @@
 static volatile float pedelec_frecuency = 0.0;
 static volatile float pedelec_duty_cycle = 0.0;
 static volatile uint16_t pedelec_timer_C2_value = 0;
+static volatile uint16_t pedelec_timer_C1_value = 0;
+static volatile TIM_ICInitTypeDef  TIM_ICInitStructure;
+static volatile bool pedelec_pulse_detected_flag = false;
 
 static void TIM_PWMinput_config(void);
 
 static void TIM_PWMinput_config(void){
-	TIM_ICInitTypeDef  TIM_ICInitStructure;
 
 	HW_PEDELEC_TIM_CLK_EN();
 
@@ -55,6 +57,10 @@ static void TIM_PWMinput_config(void){
 	/* Select the TIM4 Input Trigger: TI2FP2 */
 	TIM_SelectInputTrigger(HW_PEDELEC_TIMER, TIM_TS_TI2FP2);
 
+//	TIM_SetIC1Prescaler(HW_PEDELEC_TIMER,TIM_ICPSC_DIV8);
+//	TIM_SetIC2Prescaler(HW_PEDELEC_TIMER,TIM_ICPSC_DIV8);
+
+	TIM_PrescalerConfig(HW_PEDELEC_TIMER,1000,TIM_PSCReloadMode_Immediate);
 	/* Select the slave Mode: Reset Mode */
 	TIM_SelectSlaveMode(HW_PEDELEC_TIMER, TIM_SlaveMode_Reset);
 	TIM_SelectMasterSlaveMode(HW_PEDELEC_TIMER,TIM_MasterSlaveMode_Enable);
@@ -65,21 +71,31 @@ static void TIM_PWMinput_config(void){
 	/* Enable the CC2 Interrupt Request */
 	TIM_ITConfig(HW_PEDELEC_TIMER, TIM_IT_CC2, ENABLE);
 
-
 }
+
+void pedelec_set_pulse_detected_flag(bool value){
+	pedelec_pulse_detected_flag = value;
+}
+
+bool pedelec_get_pulse_detected_flag(void){
+	return pedelec_pulse_detected_flag;
+}
+
 
 void pedelec_tim_isr(void){
 
 	RCC_ClocksTypeDef RCC_Clocks;
 	RCC_GetClocksFreq(&RCC_Clocks);
 
+	pedelec_pulse_detected_flag = true;
+
 	/* Get the Input Capture value */
 	pedelec_timer_C2_value = TIM_GetCapture2(HW_PEDELEC_TIMER);
-
+	pedelec_timer_C1_value = TIM_GetCapture1(HW_PEDELEC_TIMER);
 	if (pedelec_timer_C2_value != 0)
 	{
 		/* Duty cycle computation */
-		pedelec_duty_cycle = (TIM_GetCapture1(HW_PEDELEC_TIMER) * 100) / pedelec_timer_C2_value;
+		pedelec_duty_cycle = ( pedelec_timer_C1_value * 100) / pedelec_timer_C2_value;
 
 		/* Frequency computation
 		   TIM4 counter clock = (RCC_Clocks.HCLK_Frequency)/2 */
@@ -94,13 +110,22 @@ void pedelec_tim_isr(void){
 }
 
 float pedeled_get_frecuency(void){
-	return pedelec_frecuency;
+	return pedelec_frecuency/1000;
 }
 
 float pedeled_get_duty_cycle(void){
 	return pedelec_duty_cycle;
 }
 
+float pedelec_get_rpm( float frecuency, uint8_t magnets){
+	float ret;
+	if(magnets > 0){
+		ret = frecuency * 60 / magnets;
+	}else{
+		ret = 0;
+	}
+	return ret;
+}
 
 void pedelec_init(void){
 	TIM_PWMinput_config();

@@ -482,6 +482,14 @@ typedef struct {
 	bool send_crc_ack;
 } nrf_config;
 
+typedef struct {
+	float pedelec_max_rpm;
+	float pedelec_min_rpm;
+	unsigned char pedelec_magnets;
+	bool is_on;
+	float max_erpm;
+} pedelec_config;
+
 // CAN status modes
 typedef enum {
 	CAN_STATUS_DISABLED = 0,
@@ -524,6 +532,9 @@ typedef struct {
 
 	// NRF application settings
 	nrf_config app_nrf_conf;
+
+	// PEDELEC application settings
+	pedelec_config app_pedelec_conf;
 } app_configuration;
 
 // Communication commands

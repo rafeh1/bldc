@@ -76,8 +76,8 @@ CH_IRQ_HANDLER(PVD_IRQHandler) {
 CH_IRQ_HANDLER(HW_PEDELEC_TIM_ISR_VEC) {
 	if (TIM_GetITStatus(HW_PEDELEC_TIMER, TIM_IT_CC2) != RESET) {
 		pedelec_tim_isr();
-
 		// Clear the IT pending bit
 		TIM_ClearITPendingBit(HW_PEDELEC_TIMER, TIM_IT_CC2);
 	}
+
 }

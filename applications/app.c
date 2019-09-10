@@ -106,6 +106,7 @@ void app_set_configuration(app_configuration *conf) {
 		hw_stop_i2c();
 		app_custom_start();
 #endif
+		app_calibike_start();
 		break;
 
 	default:
@@ -116,7 +117,7 @@ void app_set_configuration(app_configuration *conf) {
 	app_adc_configure(&appconf.app_adc_conf);
 	app_uartcomm_configure(appconf.app_uart_baudrate, appconf.permanent_uart_enabled);
 	app_nunchuk_configure(&appconf.app_chuk_conf);
-
+	app_calibike_configure(&appconf.app_pedelec_conf);
 #ifdef APP_CUSTOM_TO_USE
 	app_custom_configure(&appconf);
 #endif
