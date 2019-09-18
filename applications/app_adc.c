@@ -28,7 +28,8 @@
 #include "comm_can.h"
 #include "hw.h"
 #include <math.h>
-
+#include "pedelec.h"
+#include "commands.h"
 // Settings
 #define MAX_CAN_AGE						0.1
 #define MIN_MS_WITHOUT_POWER			500
@@ -49,6 +50,17 @@ static volatile float read_voltage2 = 0.0;
 static volatile bool use_rx_tx_as_buttons = false;
 static volatile bool stop_now = true;
 static volatile bool is_running = false;
+
+//pedelec variables
+static volatile float frecuency;
+static volatile float pedal_rpm_now;
+static volatile float speed_erpm;
+static volatile uint16_t counter_get_new_values= 0;
+static volatile uint16_t counter_print_frecuency = 0;
+static volatile uint32_t counter_time_between_pulses = 0;
+static volatile uint32_t counter_time_between_pulses_limit = 500;
+static volatile bool low_frecuency_flag = true;
+static volatile uint8_t low_frecuency_flag_hysteresis = 0;
 
 void app_adc_configure(adc_config *conf) {
 	config = *conf;
@@ -100,6 +112,8 @@ static THD_FUNCTION(adc_thread, arg) {
 
 	is_running = true;
 
+	pedelec_init();
+
 	for(;;) {
 		// Sleep for a time according to the specified rate
 		systime_t sleep_time = CH_CFG_ST_FREQUENCY / config.update_rate_hz;
@@ -115,15 +129,25 @@ static THD_FUNCTION(adc_thread, arg) {
 			return;
 		}
 
+		pedelec_periodic_task( sleep_time / 10 );
+
 		// For safe start when fault codes occur
 		if (mc_interface_get_fault() != FAULT_CODE_NONE) {
 			ms_without_power = 0;
 		}
 
 		// Read the external ADC pin and convert the value to a voltage.
-		float pwr = (float)ADC_Value[ADC_IND_EXT];
-		pwr /= 4095;
-		pwr *= V_REG;
+		static volatile float pwr;
+		switch (config.ctrl_type) {
+		case ADC_CTRL_TYPE_PEDELEC_SPEED:
+			pwr = pedelec_get_frecuency();
+			break;
+		default:
+			pwr = (float)ADC_Value[ADC_IND_EXT];
+			pwr /= 4095;
+			pwr *= V_REG;
+			break;
+		}
 
 		read_voltage = pwr;
 
@@ -160,7 +184,13 @@ static THD_FUNCTION(adc_thread, arg) {
 						config.voltage_end, 0.5, 1.0);
 			}
 			break;
+		case ADC_CTRL_TYPE_PEDELEC_SPEED:
+			frecuency = pwr;
+			pedal_rpm_now = pedelec_get_rpm(frecuency , config.pedelec_magnets);
 
+			pwr = utils_map(pedal_rpm_now, config.pedelec_min_rpm, config.pedelec_max_rpm, 0.0 , 1.0);
+
+			break;
 		default:
 			// Linear mapping between the start and end voltage
 			pwr = utils_map(pwr, config.voltage_start, config.voltage_end, 0.0, 1.0);
@@ -389,7 +419,29 @@ static THD_FUNCTION(adc_thread, arg) {
 				ms_without_power += (1000.0 * (float)sleep_time) / (float)CH_CFG_ST_FREQUENCY;
 			}
 			break;
+		case ADC_CTRL_TYPE_PEDELEC_SPEED:
+			if (!(ms_without_power < MIN_MS_WITHOUT_POWER && config.safe_start)) {
+				static volatile float speed = 0.0;
+				speed = pwr * mcconf->l_max_erpm;
 
+				static volatile uint16_t time_to_print_ms = 0;
+				time_to_print_ms += sleep_time / 10;
+				if( time_to_print_ms > 500 ){
+					time_to_print_ms = 0;
+					commands_printf("speed: %.2f",(double)speed);
+					commands_printf("pwr: %.2f",(double)pwr);
+					commands_printf("maxerpm: %.2f",(double)mcconf->l_max_erpm);
+				}
+
+				if(config.pedelec_is_on){
+					mc_interface_set_pid_speed(speed);
+				}
+			}
+
+			if (fabsf(pwr) < 0.001) {
+				ms_without_power += (1000.0 * (float)sleep_time) / (float)CH_CFG_ST_FREQUENCY;
+			}
+			break;
 		default:
 			continue;
 		}

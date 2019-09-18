@@ -11,12 +11,13 @@
 #include "stdbool.h"
 #include "stdint.h"
 
-void pedelec_tim_isr(void);
-float pedeled_get_frecuency(void);
-float pedeled_get_duty_cycle(void);
+
 bool pedelec_get_pulse_detected_flag(void);
 void pedelec_set_pulse_detected_flag(bool value);
-void pedelec_init(void);
+void pedelec_tim_isr(void);
+float pedelec_get_frecuency(void);
 float pedelec_get_rpm(float frecuency, uint8_t magnets);
+void pedelec_periodic_task( uint32_t delta_ms );
+void pedelec_init(void);
 
 #endif /* PEDELEC_H_ */

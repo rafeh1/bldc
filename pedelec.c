@@ -14,9 +14,9 @@
 #include "mc_interface.h"
 #include "utils.h"
 #include "math.h"
+#include "commands.h"
 
 static volatile float pedelec_frecuency = 0.0;
-static volatile float pedelec_duty_cycle = 0.0;
 static volatile uint16_t pedelec_timer_C2_value = 0;
 static volatile uint16_t pedelec_timer_C1_value = 0;
 static volatile TIM_ICInitTypeDef  TIM_ICInitStructure;
@@ -84,37 +84,16 @@ bool pedelec_get_pulse_detected_flag(void){
 
 void pedelec_tim_isr(void){
 
-	RCC_ClocksTypeDef RCC_Clocks;
-	RCC_GetClocksFreq(&RCC_Clocks);
-
 	pedelec_pulse_detected_flag = true;
 
 	/* Get the Input Capture value */
 	pedelec_timer_C2_value = TIM_GetCapture2(HW_PEDELEC_TIMER);
 	pedelec_timer_C1_value = TIM_GetCapture1(HW_PEDELEC_TIMER);
-	if (pedelec_timer_C2_value != 0)
-	{
-		/* Duty cycle computation */
-		pedelec_duty_cycle = ( pedelec_timer_C1_value * 100) / pedelec_timer_C2_value;
 
-		/* Frequency computation
-		   TIM4 counter clock = (RCC_Clocks.HCLK_Frequency)/2 */
-
-		pedelec_frecuency = (RCC_Clocks.HCLK_Frequency)/2 / pedelec_timer_C2_value;
-	}
-	else
-	{
-		pedelec_duty_cycle = 0;
-		pedelec_frecuency = 0;
-	}
 }
 
-float pedeled_get_frecuency(void){
+float pedelec_get_frecuency(void){
 	return pedelec_frecuency/1000;
-}
-
-float pedeled_get_duty_cycle(void){
-	return pedelec_duty_cycle;
 }
 
 float pedelec_get_rpm( float frecuency, uint8_t magnets){
@@ -127,8 +106,62 @@ float pedelec_get_rpm( float frecuency, uint8_t magnets){
 	return ret;
 }
 
+void pedelec_periodic_task( uint32_t delta_ms ){
+	static volatile uint32_t time_between_pulses_ms = 0;
+	static volatile uint32_t time_between_pulses_limit_ms = 500;
+	static volatile bool low_frecuency_flag = true;
+	static volatile uint8_t low_frecuency_flag_hysteresis = 0;
+
+
+	if( low_frecuency_flag ){
+		pedelec_frecuency = 0;
+	}else{
+		if (pedelec_timer_C2_value != 0)
+		{
+			RCC_ClocksTypeDef RCC_Clocks;
+			RCC_GetClocksFreq(&RCC_Clocks);
+
+			pedelec_frecuency = (RCC_Clocks.HCLK_Frequency)/2 / pedelec_timer_C2_value;
+
+			//clear this value just to make the system calculate the frecuency only when a new value was read
+			pedelec_timer_C2_value = 0;
+		}
+
+	}
+
+	if(pedelec_get_pulse_detected_flag()){
+		pedelec_set_pulse_detected_flag(false);
+		if(time_between_pulses_ms < time_between_pulses_limit_ms){
+			if(low_frecuency_flag_hysteresis > 1)
+			{
+				low_frecuency_flag = false;
+			}else{
+				low_frecuency_flag_hysteresis++;
+			}
+		}
+		time_between_pulses_ms = 0;
+	}else{
+		if( time_between_pulses_ms > time_between_pulses_limit_ms){
+			low_frecuency_flag = true;
+			low_frecuency_flag_hysteresis = 0;
+		}else{
+			time_between_pulses_ms += delta_ms;
+		}
+	}
+
+	static volatile uint16_t time_to_print_ms = 0;
+	time_to_print_ms += delta_ms;
+	if( time_to_print_ms > 500 ){
+		time_to_print_ms = 0;
+		commands_printf("frecuency: %.2f",(double)pedelec_get_frecuency());
+	}
+
+}
+
 void pedelec_init(void){
 	TIM_PWMinput_config();
 }
+
+
 
 

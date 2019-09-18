@@ -59,7 +59,4 @@ void app_custom_start(void);
 void app_custom_stop(void);
 void app_custom_configure(app_configuration *conf);
 
-void app_calibike_start(void);
-void app_calibike_configure(pedelec_config *conf);
-
 #endif /* APP_H_ */
