@@ -33,8 +33,8 @@
 // Settings
 #define MAX_CAN_AGE						0.1
 #define MIN_MS_WITHOUT_POWER			500
-#define FILTER_SAMPLES					5
-#define RPM_FILTER_SAMPLES				8
+#define FILTER_SAMPLES					25 //5
+#define RPM_FILTER_SAMPLES				28 //8
 
 // Threads
 static THD_FUNCTION(adc_thread, arg);
@@ -129,7 +129,7 @@ static THD_FUNCTION(adc_thread, arg) {
 			return;
 		}
 
-		pedelec_periodic_task( sleep_time / 10 );
+		pedelec_periodic_task( sleep_time / 10 ); //sleep time to ms
 
 		// For safe start when fault codes occur
 		if (mc_interface_get_fault() != FAULT_CODE_NONE) {
@@ -425,17 +425,39 @@ static THD_FUNCTION(adc_thread, arg) {
 				speed = pwr * mcconf->l_max_erpm;
 
 				static volatile uint16_t time_to_print_ms = 0;
+				static bool motor_released = false;
+				//calculate erpm hysteresis as 30 m/min linear speed taking into consideration the wheel diameter and the motor poles
+				const float erpm_hysteresis = ( 30.0 / ( (mcconf->si_wheel_diameter / 1000.0) * M_PI ) )  *  mcconf->si_motor_poles;
+
 				time_to_print_ms += sleep_time / 10;
+
+ 				if(config.pedelec_is_on){
+					if(motor_released){
+						if( speed > (mcconf->l_min_erpm + erpm_hysteresis) ){
+							mc_interface_set_pid_speed(speed);
+							motor_released = false;
+						}
+					}else{
+						if( speed < (mcconf->l_min_erpm ) ){
+							mc_interface_release_motor();
+							motor_released = true;
+						}else{
+							mc_interface_set_pid_speed(speed);
+							motor_released = false;
+						}
+					}
+				}
+
 				if( time_to_print_ms > 500 ){
 					time_to_print_ms = 0;
 					commands_printf("speed: %.2f",(double)speed);
 					commands_printf("pwr: %.2f",(double)pwr);
 					commands_printf("maxerpm: %.2f",(double)mcconf->l_max_erpm);
+					if(motor_released){
+						commands_printf("MR");
+					}
 				}
 
-				if(config.pedelec_is_on){
-					mc_interface_set_pid_speed(speed);
-				}
 			}
 
 			if (fabsf(pwr) < 0.001) {
