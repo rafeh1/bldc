@@ -125,19 +125,19 @@ void password_init(void){
 	// Register terminal callbacks
 
 	terminal_register_command_callback(
-			"enter_user_password",
-			"Enter user password to unlock system",
+			"unlock",
+			"Enter user password to unlock system, example: unlock <password>",
 			0,
 			terminal_cmd_enter_user_password);
 
 	terminal_register_command_callback(
-			"new_user_password",
-			"Set a new user password for lock function",
+			"setpw",
+			"Set a new user password for lock function, that must be 8 characters long, example: setpw <password>",
 			0,
 			terminal_cmd_new_user_password);
 
 	terminal_register_command_callback(
-			"lock_system",
+			"lock",
 			"locks system with password set in memory",
 			0,
 			terminal_cmd_lock_system);
