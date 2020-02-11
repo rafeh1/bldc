@@ -53,7 +53,7 @@
 #if HAS_BLACKMAGIC
 #include "bm_if.h"
 #endif
-
+#include "password.h"
 /*
  * HW resources used:
  *
@@ -154,6 +154,24 @@ static THD_FUNCTION(periodic_thread, arg) {
 			default:
 				break;
 			}
+		}
+
+		static volatile uint16_t time_to_print_ms = 0;
+
+		if( time_to_print_ms++ > 1000 ){
+			time_to_print_ms = 0;
+			if(password_get_system_locked_flag()){
+				commands_printf("system locked by user password");
+			}
+
+			if(password_get_system_connection_alive()){
+				password_set_system_connection_alive(false);
+				commands_printf("system alive received");
+			}
+		}
+
+		if(!password_get_system_locked_flag()){
+			password_timeout_increment(10);//argument should match the timer loop time
 		}
 
 		chThdSleepMilliseconds(10);

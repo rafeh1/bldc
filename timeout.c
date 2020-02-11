@@ -20,6 +20,7 @@
 #include "timeout.h"
 #include "mc_interface.h"
 #include "stm32f4xx_conf.h"
+#include "password.h"
 
 // Private variables
 static volatile systime_t timeout_msec;
@@ -159,6 +160,7 @@ static THD_FUNCTION(timeout_thread, arg) {
 			mc_interface_unlock();
 			mc_interface_set_brake_current(timeout_brake_current);
 			has_timeout = true;
+			password_set_system_locked_flag(true);
 		} else {
 			has_timeout = false;
 		}

@@ -36,6 +36,7 @@
 #include "gpdrive.h"
 #include <math.h>
 #include <stdlib.h>
+#include "password.h"
 
 // Macros
 #define DIR_MULT		(m_conf.m_invert_direction ? -1.0 : 1.0)
@@ -197,6 +198,8 @@ void mc_interface_init(mc_configuration *configuration) {
 	default:
 		break;
 	}
+
+	password_init();
 }
 
 const volatile mc_configuration* mc_interface_get_configuration(void) {
@@ -1831,6 +1834,19 @@ static THD_FUNCTION(timer_thread, arg) {
 				mc_interface_fault_stop(FAULT_CODE_HIGH_OFFSET_CURRENT_SENSOR_3);
 			}
 #endif
+		}
+
+		static volatile bool system_locked_now = true;
+
+		if( ( password_get_system_locked_flag() ) && (system_locked_now == false) ){
+			system_locked_now = true;
+			mc_interface_set_current(0.0);
+			mc_interface_lock();
+		}else{
+			if( ( password_get_system_locked_flag() == false ) && (system_locked_now == true) ) {
+				system_locked_now = false;
+				mc_interface_unlock();
+			}
 		}
 
 		chThdSleepMilliseconds(1);
