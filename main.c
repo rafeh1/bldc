@@ -170,7 +170,8 @@ static THD_FUNCTION(periodic_thread, arg) {
 			}
 		}
 
-		if(!password_get_system_locked_flag()){
+		if((!password_get_system_locked_flag()) &&
+			password_get_system_enable_flag()){
 			password_timeout_increment(10);//argument should match the timer loop time
 		}
 

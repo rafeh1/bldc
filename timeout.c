@@ -160,7 +160,11 @@ static THD_FUNCTION(timeout_thread, arg) {
 			mc_interface_unlock();
 			mc_interface_set_brake_current(timeout_brake_current);
 			has_timeout = true;
-			password_set_system_locked_flag(true);
+			if(password_get_system_enable_flag())
+			{
+				password_set_system_locked_flag(true);
+			}
+
 		} else {
 			has_timeout = false;
 		}
