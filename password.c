@@ -46,7 +46,6 @@ static void terminal_cmd_enter_user_password(int argc, const char **argv) {
 			pass_system_enable[index]  = 0;
 		}
 		conf_general_store_eeprom_var_hw((eeprom_var*)(pass_system_enable), EEPROM_ADDR_PASSWORD_SYSTEM_ENABLE);
-
 	}
 
 	if( argc == 3 ) {
@@ -93,7 +92,7 @@ static void terminal_cmd_enter_user_password(int argc, const char **argv) {
 					conf_general_store_eeprom_var_hw((eeprom_var*)(pass_system_enable), EEPROM_ADDR_PASSWORD_SYSTEM_ENABLE);
 
 				}else{
-					commands_printf("wrong password, it does not match current password ---> system keeps locked");
+					commands_printf("wrong password, it does not match current password");
 				}
 			}
 			else
@@ -105,8 +104,35 @@ static void terminal_cmd_enter_user_password(int argc, const char **argv) {
 
 	}
 	else {
-		commands_printf("2 arguments required. For example: ul Calibike enable");
-		commands_printf(" ");
+
+		if( argc == 2 ) {
+			sscanf(argv[1], "%s", user_password);
+
+			uint8_t pass_length = strlen((const char*)user_password);
+
+			if( pass_length != 8){
+				commands_printf("wrong password, it needs to be 8 characters long");
+			}else{
+
+				// Read stored password in eeprom
+				conf_general_read_eeprom_var_hw((eeprom_var*)user_password_read,EEPROM_ADDR_USER_PASSWORD);
+				conf_general_read_eeprom_var_hw((eeprom_var*)(user_password_read+4),EEPROM_ADDR_USER_PASSWORD+1);
+
+				if( strncmp(user_password, user_password_read,8) == 0){
+					system_locked = false;
+					commands_printf("good password --> system unlocked");
+					password_timeout_configure(300000);//5 minutes in msec
+
+				}else{
+					commands_printf("wrong password, it does not match current password");
+				}
+			}
+		}
+		else
+		{
+			commands_printf("wrong command, please use 1 argument like \"ul <password>\" or 2 arguments such as \"ul <password> <enable/disable>");
+		}
+
 	}
 
 	commands_printf(" ");
@@ -184,14 +210,32 @@ void password_init(void){
 			terminal_cmd_enter_user_password);
 
 	terminal_register_command_callback(
+				"Ul",
+				"same as ul",
+				0,
+				terminal_cmd_enter_user_password);
+
+	terminal_register_command_callback(
 			"sp",
 			"Sets a new user password for lock function, that must be 8 characters long, example: sp <password>",
 			0,
 			terminal_cmd_new_user_password);
 
 	terminal_register_command_callback(
+			"Sp",
+			"same as sp",
+			0,
+			terminal_cmd_new_user_password);
+
+	terminal_register_command_callback(
 			"lk",
 			"locks system with password set in memory",
+			0,
+			terminal_cmd_lock_system);
+
+	terminal_register_command_callback(
+			"Lk",
+			"same as lk",
 			0,
 			terminal_cmd_lock_system);
 
