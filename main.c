@@ -15,7 +15,7 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-    */
+ */
 
 #include "ch.h"
 #include "hal.h"
@@ -54,11 +54,14 @@
 #include "bm_if.h"
 #endif
 #include "shutdown.h"
+#include "mempools.h"
 
+#include "password.h"
 /*
  * HW resources used:
  *
  * TIM1: mcpwm
+ * TIM2: mcpwm_foc
  * TIM5: timer
  * TIM8: mcpwm
  * TIM3: servo_dec/Encoder (HW_R2)/servo_simple
@@ -99,15 +102,31 @@ static THD_FUNCTION(periodic_thread, arg) {
 	chRegSetThreadName("Main periodic");
 
 	for(;;) {
-		if (mc_interface_get_state() == MC_STATE_RUNNING) {
+		mc_state state1 = mc_interface_get_state();
+		mc_interface_select_motor_thread(2);
+		mc_state state2 = mc_interface_get_state();
+		mc_interface_select_motor_thread(1);
+		if ((state1 == MC_STATE_RUNNING) || (state2 == MC_STATE_RUNNING)) {
 			ledpwm_set_intensity(LED_GREEN, 1.0);
 		} else {
 			ledpwm_set_intensity(LED_GREEN, 0.2);
 		}
 
 		mc_fault_code fault = mc_interface_get_fault();
-		if (fault != FAULT_CODE_NONE) {
+		mc_interface_select_motor_thread(2);
+		mc_fault_code fault2 = mc_interface_get_fault();
+		mc_interface_select_motor_thread(1);
+		if (fault != FAULT_CODE_NONE || fault2 != FAULT_CODE_NONE) {
 			for (int i = 0;i < (int)fault;i++) {
+				ledpwm_set_intensity(LED_RED, 1.0);
+				chThdSleepMilliseconds(250);
+				ledpwm_set_intensity(LED_RED, 0.0);
+				chThdSleepMilliseconds(250);
+			}
+
+			chThdSleepMilliseconds(500);
+
+			for (int i = 0;i < (int)fault2;i++) {
 				ledpwm_set_intensity(LED_RED, 1.0);
 				chThdSleepMilliseconds(250);
 				ledpwm_set_intensity(LED_RED, 0.0);
@@ -154,6 +173,32 @@ static THD_FUNCTION(periodic_thread, arg) {
 
 			default:
 				break;
+			}
+		}
+
+		static volatile uint16_t time_to_print_ms = 0;
+
+		if( time_to_print_ms++ > 1000 ){
+			time_to_print_ms = 0;
+			if(password_get_system_locked_flag()){
+				commands_printf("system locked by user password");
+			}
+
+			if(password_get_system_connection_alive()){
+				password_set_system_connection_alive(false);
+				commands_printf("system alive received");
+			}
+		}
+
+		static volatile float current_now_filtered = 0.0;
+		UTILS_LP_FAST(current_now_filtered,mc_interface_get_tot_current(),0.1);
+
+		if((!password_get_system_locked_flag()) &&
+			password_get_system_enable_flag() ){
+			if( fabsf(current_now_filtered) < 0.2){
+				password_timeout_increment(10);//argument should match the timer loop time
+			}else{
+				password_timeout_reset();//if current is higher than threshold, we reinit timer. this prevents that a mobile disconnect issue can lock the system while the bike is still being used.
 			}
 		}
 
@@ -220,11 +265,7 @@ int main(void) {
 	}
 
 	ledpwm_init();
-
-	mc_configuration mcconf;
-	conf_general_read_mc_configuration(&mcconf);
-
-	mc_interface_init(&mcconf);
+	mc_interface_init();
 
 	commands_init();
 
@@ -236,9 +277,9 @@ int main(void) {
 	comm_can_init();
 #endif
 
-	app_configuration appconf;
-	conf_general_read_app_configuration(&appconf);
-	app_set_configuration(&appconf);
+	app_configuration *appconf = mempools_alloc_appconf();
+	conf_general_read_app_configuration(appconf);
+	app_set_configuration(appconf);
 	app_uartcomm_start_permanent();
 
 #ifdef HW_HAS_PERMANENT_NRF
@@ -335,8 +376,10 @@ int main(void) {
 #endif
 
 	timeout_init();
-	timeout_configure(appconf.timeout_msec, appconf.timeout_brake_current);
-	imu_init(&appconf.imu_conf);
+	timeout_configure(appconf->timeout_msec, appconf->timeout_brake_current);
+	imu_init(&appconf->imu_conf);
+
+	mempools_free_appconf(appconf);
 
 #if HAS_BLACKMAGIC
 	bm_init();
