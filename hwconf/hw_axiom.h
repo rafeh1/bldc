@@ -35,7 +35,6 @@
 #define HW_HAS_3_SHUNTS
 #define HW_HAS_PHASE_SHUNTS
 #define HW_HAS_SIN_COS_ENCODER
-#define HW_HAS_GATE_DRIVER_SUPPLY_MONITOR
 
 // Macros
 #define ENABLE_GATE()			palSetPad(GPIOC, 14)

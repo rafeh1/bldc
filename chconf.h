@@ -416,7 +416,7 @@
  * @details User fields added to the end of the @p thread_t structure.
  */
 #define CH_CFG_THREAD_EXTRA_FIELDS                                          \
-  int motor_selected;
+  /* Add threads custom fields here.*/
 
 /**
  * @brief   Threads initialization hook.
@@ -427,7 +427,6 @@
  */
 #define CH_CFG_THREAD_INIT_HOOK(tp) {                                       \
   /* Add threads initialization code here.*/                                \
-  tp->motor_selected = 1; \
 }
 
 /**

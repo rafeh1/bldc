@@ -178,8 +178,7 @@ static void connect_virtual_motor(float ml , float J, float Ld, float Lq,
 		//save current offsets
 		mcpwm_foc_get_current_offsets(&m_curr0_offset_backup,
 										&m_curr1_offset_backup,
-										&m_curr2_offset_backup,
-										false);
+										&m_curr2_offset_backup);
 		//set current offsets to 2048
 		mcpwm_foc_set_current_offsets(2048, 2048, 2048);
 

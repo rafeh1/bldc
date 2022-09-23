@@ -24,10 +24,7 @@
 #include "hw.h"
 
 // Functions
-void mc_interface_init(void);
-int mc_interface_motor_now(void);
-void mc_interface_select_motor_thread(int motor);
-int mc_interface_get_motor_thread(void);
+void mc_interface_init(mc_configuration *configuration);
 const volatile mc_configuration* mc_interface_get_configuration(void);
 void mc_interface_set_configuration(mc_configuration *configuration);
 void mc_interface_set_pwm_callback(void (*p_func)(void));
@@ -86,9 +83,9 @@ float mc_interface_get_distance_abs(void);
 setup_values mc_interface_get_setup_values(void);
 
 // MC implementation functions
-void mc_interface_fault_stop(mc_fault_code fault, bool is_second_motor, bool is_isr);
+void mc_interface_fault_stop(mc_fault_code fault);
 int mc_interface_try_input(void);
-void mc_interface_mc_timer_isr(bool is_second_motor);
+void mc_interface_mc_timer_isr(void);
 
 // Interrupt handlers
 void mc_interface_adc_inj_int_handler(void);
