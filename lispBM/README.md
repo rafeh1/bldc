@@ -293,9 +293,16 @@ Read system info parameter param. Example:
 (sysinfo 'has-phase-filters) ; t if hardware has phase filters
 (sysinfo 'uuid) ; STM32 UUID
 (sysinfo 'runtime) ; Total runtime in seconds
+(sysinfo 'git-branch) ; Git branch name
+(sysinfo 'git-hash) ; Git hash of current commit
+(sysinfo 'compiler) ; GCC version, e.g. 7.3.1
 ```
 
 ### App Override Commands
+
+Several app-inputs can be detached from the external interfaces and overridden from lisp. This is useful to take advantage of existing throttle curves and control modes from the apps while providing a custom input source.
+
+#### app-adc-detach
 
 ```clj
 (app-adc-detach mode state)
@@ -309,6 +316,8 @@ Read system info parameter param. Example:
 ```
 
 Detaches a peripherial from the APP ADC
+
+#### app-adc-override
 
 ```clj
 (app-adc-override mode value)
@@ -1005,6 +1014,7 @@ Configure GPIO pin to mode. Example:
 'pin-hall3  ; Sensor port hall3
 'pin-adc1   ; ADC1-pin on COMM-port
 'pin-adc2   ; ADC2-pin on COMM-port
+'pin-ppm    ; Signal-pin on PPM-port
 
 ; Available modes
 'pin-mode-out    ; Output
@@ -1204,6 +1214,26 @@ Example:
 (print (conf-detect-foc 0 50 -20 50 800 2500))
 ; Print the result when done
 ```
+
+#### conf-set-pid-offset
+
+```clj
+(conf-set-pid-offset offset optStore)
+```
+
+Set the PID controller offset such that the current angle becomes offset. This can be used in position control applications when e.g. homing against a limit switch. The optional argument optStore can be set to 1 to store the offset persistently (although that requires stopping the motor).
+
+#### conf-measure-res
+
+```clj
+(conf-measure-res current optSamples)
+```
+
+Measure motor resistance with current. The optional argument optSamples sets the number of samples to use (default 100).
+
+This command is useful to update the configuration before starting the motor as the resistance is the most important when it comes to sensorless low-speed performance. It is also useful to sanity check if the motor is shorted out or if a connector is loose. Such faults cause a relatively significant change in resistance. Changes with more than 50% compared to the detected value are most likely faults.
+
+**NOTE:** Phase filters are required to get accurate resistance measurements, so resistance-based fault detection is not as useful on hardware without phase filters.
 
 ### EEPROM (Nonvolatile Storage)
 
@@ -1681,7 +1711,7 @@ Split string str into tokens using delimiter delim. If delim is a number str wil
 (str-replace str rep optWith)
 ```
 
-Replace every occurrence of rep in str with opnWith. If optWith is omitted every rep will be removed. Example:
+Replace every occurrence of rep in str with optWith. If optWith is omitted every rep will be removed. Example:
 
 ```clj
 (str-replace "Hello World!" "World" "LispBM")
@@ -1942,6 +1972,46 @@ Load filename as a byte array and bind it to binding. Note that import must be o
 (load-native-lib ws2812); Load it to get the extensions it provides 
 ```
 
+### Import Paths
+
+Paths for import can be relative or absolute. Absolute paths are always looked up from the root of the file system, but relative paths need to be resolved. If the lisp-file is saved (e.g. there is a path at the bottom of the editor) paths are looked up relative to the location of that lisp file. If they are not found there they are looked up relative to the location where VESC Tool is started. If the file never has been saved (e.g. you just opened a new tab and started typing) the file path is unknown until save as is used, so only the path relative to VESC Tool is looked up then.
+
+### Special Paths
+
+It is also possible to import files from [VESC Packages](https://github.com/vedderb/vesc_pkg) using a special path syntax. If you want to import the lisp-file from a VESC Package you can use the format
+
+```clj
+(import "pkg@path/to/package.vescpkg" 'import-name)
+```
+
+This will import the lisp-file from that VESC Package. It is also possible to import the imports from a lisp-file in a VESC Package. This is a bit confusing as the package itself does not contain the paths anymore, so instead of referring to the path you have to refer to the label. Here is an example of that:
+
+Suppose you have a VESC Package that has a lisp-file that imports a file like this:
+
+```clj
+(import "c_lib/ws2812/ws2812.bin" 'ws2812)
+```
+
+To import the file that is imported as ws2812 in the lisp-file of that vesc package you can use
+
+```clj
+(import "pkg::ws2812@path/to/package.vescpkg" 'ws2812)
+```
+
+This means import the import ws2812 from the lisp file in the VESC Package located at path/to/package.vescpkg.
+
+### Import Official VESC Packages
+
+There is a [github repository](https://github.com/vedderb/vesc_pkg) where official VESC Packages are located. All of the lisp-files and their imports from the packages in this repository can be imported using the special base path **://vesc_packages**. For example, to import the ws2812 import from lib_ws2812 the following import can be used:
+
+```clj
+(import "pkg::ws2812@://vesc_packages/lib_ws2812/ws2812.vescpkg" 'ws2812)
+```
+
+This should work for all VESC Packages in that repository. Most examples there use this pattern.
+
+**NOTE:** The path above does not download the repository on demand, but relies on the cached local version. This cached version is not updated automatically, so you have to run the update manually when you want to get the latest version of the repository. To update the cache you can use the **Update Archive**-button from the VESC Packages-page in VESC Tool.
+
 ## Native Libraries
 
 Native libraries can be used when more performance is needed. They can be created by compiling position-independent C code and loaded/unloaded with the functions below. More care has to be taken when developing native libraries as they have far less sandboxing than lispBM-code, so access to a SWD-programmer is recommended while developing them.
@@ -2044,6 +2114,42 @@ Same as uavcan-last-rawcmd, but for the last rpm-command.
 Set how many evaluation steps to run each thread between context switches. Default is 50. A lower value will alter between threads more often, reducing latency between context switches at the cost of overall performance. The default value of 50 has relatively low performance overhead. Setting the quota to the lowest possible value of 1, meaning that each thread gets to run one step at a time, roughly halves the performance.
 
 Lowering this value is useful if there are one or more timing-critical threads (that e.g. read encoders) that cannot wait too long between iterations.
+
+## Plotting
+
+VESC Tool can be used for plotting data using the Realtime Data->Experiment page. The following commands are used to set up a plot and send data.
+
+#### plot-init
+
+```clj
+(plot-init namex namey)
+```
+
+Start a new plot with namex as the x axis name and namey as the u axis name.
+
+#### plot-add-graph
+
+```clj
+(plot-add-graph name)
+```
+
+Add a graph to the current plot that will be called name. Every added graph gets a new index, starting from 0.
+
+#### plot-set-graph
+
+```clj
+(plot-set-graph ind)
+```
+
+Set graph index to which data points are sent.
+
+#### plot-send-points
+
+```clj
+(plot-send-points x y)
+```
+
+Send a xy-point to the selected graph in the plot.
 
 ## How to update
 

@@ -35,16 +35,18 @@ lbm_heap_state_t lbm_heap_state;
 
 char *lbm_dec_str(lbm_value val) {
   char *res = 0;
-
   if (lbm_type_of(val) == LBM_TYPE_ARRAY) {
     lbm_array_header_t *array = (lbm_array_header_t *)lbm_car(val);
-
+    if (array == NULL) {
+      return NULL;
+    }
     if (array->elt_type == LBM_TYPE_CHAR) {
       res = (char *)array->data;
     }
   }
   return res;
 }
+
 lbm_char_channel_t *lbm_dec_channel(lbm_value val) {
   lbm_char_channel_t *res = NULL;
 
@@ -53,6 +55,7 @@ lbm_char_channel_t *lbm_dec_channel(lbm_value val) {
   }
   return res;
 }
+
 lbm_uint lbm_dec_custom(lbm_value val) {
   lbm_uint res = 0;
   if (lbm_type_of(val) == LBM_TYPE_CUSTOM) {
@@ -510,6 +513,7 @@ int lbm_gc_sweep_phase(void) {
         case SYM_CHANNEL_TYPE:{
           lbm_char_channel_t *chan = (lbm_char_channel_t*)heap[i].car;
           if (lbm_memory_ptr_inside((lbm_uint*)chan)) {
+            lbm_memory_free((lbm_uint*)chan->state);
             lbm_memory_free((lbm_uint*)chan);
           }
         } break;
@@ -756,13 +760,13 @@ int lbm_heap_allocate_array(lbm_value *res, lbm_uint size, lbm_type type){
   }
 
   array->data = (lbm_uint*)lbm_memory_allocate(allocate_size);
-  memset(array->data, 0, allocate_size * sizeof(lbm_uint));
 
   if (array->data == NULL) {
     lbm_memory_free((lbm_uint*)array);
     *res = ENC_SYM_MERROR;
     return 0;
   }
+  memset(array->data, 0, allocate_size * sizeof(lbm_uint));
 
   array->elt_type = type;
   array->size = size;
@@ -803,7 +807,9 @@ int lbm_heap_explicit_free_array(lbm_value arr) {
   if (lbm_is_array(arr)) {
 
     lbm_array_header_t *header = (lbm_array_header_t*)lbm_car(arr);
-
+    if (header == NULL) {
+      return 0;
+    }
     lbm_memory_free((lbm_uint*)header->data);
     lbm_memory_free((lbm_uint*)header);
 

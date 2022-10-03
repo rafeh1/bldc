@@ -676,6 +676,27 @@ Example
 ```
 ---
 
+### undefine
+
+A definition in the global can be removed using undefine.  The form of
+an undefine expression is `(undefine name-expr)` where name-expr
+should evaluate to a symbol (for example `'apa`).
+
+Example
+```lisp
+(undefine 'apa)
+```
+
+It is also possible to undefine several bindings at the same time by
+providing a list of names.
+
+Example
+```lisp
+(undefine '(apa bepa cepa))
+```
+
+---
+
 ### setvar
 
 The `setvar` form is used to change the value of some variable in an environment.
@@ -781,99 +802,6 @@ Evaluate a program you just read from a string with <a href="#eval-program">eval
 ```
 The expression above evaluates to 3 with the side effect that the global environment
 has been extended with the binding `(apa 1)`.
-
----
-
-
-### namespace
-
-Creates a new namespace to reduce the effect and likelyhood of colliding
-names for things. Use a namespace to hold definitions that are related
-to eachother. 
-
-Namespaces in LBM form a multiply branching tree of subnamespaces. There is
-a root namespace that is unnamed. Definitions in a namespaces can only be reached from a parent
-namespace, not by siblings or children of that namespace. 
-
-The example below creates a namespace as a child to the current namespace
-and defines a to be 1000 within the `myspace`.
-```lisp
-(namespace myspace
-	   (define a 1000))
-```
-
-To access `a` from the parent namespace you use a namespace "path" expressed
-as symbols separated by `:`
-
-```
-# myspace:a
-> 1000
-```
-
-Multiple definitions can be added to a namespace in one go by using `progn`
-
-```lisp
-(namespace loads-a-stuff
-	   (progn
-		(define a 1)
-		(define b 2)
-		(define c 3)
-		(define f (lambda (x) (+ x 10)))))
-```
-
-Namespaces can be nested as:
-```lisp
-(namespace n1
-	   (namespace n2
-	   	      (define a 42)))
-
-```
-
-and to access `a` under n1 and n2 is done by:
-
-```
-# n1:n2:a
-> 42
-```
-
-The last thing to occur in an `n1:n2: ...` sequence does not have to
-be a symbols. It can be an arbitrary expression that will be evaluated in
-the namespace identified by the path.
-
-```
-# n1:n2:(+ a 1000)
-> 1042
-```
-
-The syntax using symbols separated by `:` (as `n1:n2:a`) expands
-into applications of the `namespace` form. For example `n1:n2:a`
-expands into `(namespace n1 (namespace n2 a))` upon parsing.
-So the following two programs do the same thing:
-
-```lisp
-(namespace space (define stars 1000))
-```
-
-and
-
-```lisp
-space:(define stars 1000)
-```
-
-Both of the programs above defines `stars` to 1000 in the namespace `space`.
-Both of the programs above also create the `space` namespace if it does not
-already exist.
-
-
----
-**NOTE**
-Namespaces has no influence on #variables which all remain accessible from
-any space.
-
-The same is true for extensions. Extensions and #variables can be considered to
-be part of some other globally available namespace.
-
----
 
 ---
 
@@ -1368,6 +1296,24 @@ that the runtime system should allocate to run the task in: `(spawn stack-size c
 
 ---
 
+### spawn-trap
+
+Use `spawn-trap` to spawn a child process and enable trapping of exit conditions for that
+child. The form of a `spawn-trap` expression is `(spawn-trap closure arg1 .. argN)`.
+If the child process is terminated because of an error, a message is sent to the parent
+process of the form `(exit-error tid err-val)`. If the child process terminates successfully
+a message of the form `(exit-ok tid value)` is sent to the parent.
+
+Example:
+```lisp
+(spawn-trap my-thread)
+
+(recv  ((exit-error (? tid) (? e)) ...)
+       ((exit-ok    (? tid) (? v)) ...))
+```
+
+---
+
 ### wait
 
 Use `wait` to wait for a spawned process to finish.
@@ -1393,7 +1339,7 @@ is number indicating at least how many microseconds the process should sleep.
 `atomic` can be used to execute a LispBM expression without allowing
 the runtime system to switch task during the time that takes.
 
-An example that atomically perfoms operations a,b and c. 
+An example that atomically perfoms operations a,b and c.
 
 ```lisp
 (atomic
@@ -1402,7 +1348,23 @@ An example that atomically perfoms operations a,b and c.
      b
      c))
 ```
+---
 
+### exit-ok
+
+The `exit-ok` function terminates the thread in a "successful" way and returnes a result
+specified by the programmer. The form of an `exit-ok` expression is `(exit-ok value)`.
+If the process that calls `exit-ok` was created using `spawn-trap` a message of the form
+`(exit-ok tid value)` is be sent to the parent of this process.
+
+---
+
+### exit-error
+
+The `exit-error` function terminates the thread with an error specified by the programmer.
+The form of an `exit-error` expression is `(exit-error err_val)`. If the process that
+calls `exit-error` was created using `spawn-trap` a message of the form
+`(exit-error tid err_val)` is sent to the parent of this process.
 
 ---
 
