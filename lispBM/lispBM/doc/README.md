@@ -2,14 +2,31 @@
 
 # LispBM Programming Documentation
 
-
 [Language reference](./lbmref.md)
 
+## Extension libraries
 
-## Programming manual
+[Array extensions](./arrayref.md)
 
-[Chapter 1: Introduction](./manual/ch1_introduction.md)
+[Display extensions](./displayref.md)
 
-[Chapter 2: List processing](./manual/ch2_list_processing.md)
+[DSP extensions](./dspref.md)
 
-[Chapter 3: Concurrency](./manual/ch3_concurrency.md)
+[Math extensions](./mathref.md)
+
+[Mutex extensions](./mutexref.md)
+
+[Random extensions](./randomref.md)
+
+[Runtime extensions](./runtimeref.md)
+
+[Set extensions](./setref.md)
+
+[String extensions](./stringref.md)
+
+[TTF font extensions](./ttfref.md)
+
+[Library of dynamically loadable functionality](./dynref.md)
+
+
+

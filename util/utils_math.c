@@ -1,5 +1,5 @@
 /*
-	Copyright 2016 - 2019 Benjamin Vedder	benjamin@vedder.se
+	Copyright 2016 - 2023 Benjamin Vedder	benjamin@vedder.se
 
 	This file is part of the VESC firmware.
 
@@ -18,8 +18,6 @@
     */
 
 #include "utils_math.h"
-#include "hal.h"
-#include "app.h"
 
 #include <string.h>
 #include <stdlib.h>
@@ -70,38 +68,6 @@ void utils_deadband(float *value, float tres, float max) {
 }
 
 /**
- * Get the difference between two angles. Will always be between -180 and +180 degrees.
- * @param angle1
- * The first angle
- * @param angle2
- * The second angle
- * @return
- * The difference between the angles
- */
-float utils_angle_difference(float angle1, float angle2) {
-	float difference = angle1 - angle2;
-	while (difference < -180.0) difference += 2.0 * 180.0;
-	while (difference > 180.0) difference -= 2.0 * 180.0;
-	return difference;
-}
-
-/**
- * Get the difference between two angles. Will always be between -pi and +pi radians.
- * @param angle1
- * The first angle in radians
- * @param angle2
- * The second angle in radians
- * @return
- * The difference between the angles in radians
- */
-float utils_angle_difference_rad(float angle1, float angle2) {
-	float difference = angle1 - angle2;
-	while (difference < -M_PI) difference += 2.0 * M_PI;
-	while (difference > M_PI) difference -= 2.0 * M_PI;
-	return difference;
-}
-
-/**
  * Takes the average of a number of angles.
  *
  * @param angles
@@ -128,6 +94,30 @@ float utils_avg_angles_rad_fast(float *angles, float *weights, int angles_num) {
 	}
 
 	return utils_fast_atan2(s_sum, c_sum);
+}
+
+/**
+ * Interpolate two angles in radians and normalize the result to
+ * -pi to pi.
+ *
+ * @param a1
+ * The first angle
+ *
+ * @param a2
+ * The second angle
+ *
+ * @param weight_a1
+ * The weight of the first angle. If this is 1.0 the result will
+ * be a1 and if it is 0.0 the result will be a2.
+ *
+ */
+float utils_interpolate_angles_rad(float a1, float a2, float weight_a1) {
+	while ((a1 - a2) > M_PI) a2 += 2.0 * M_PI;
+	while ((a2 - a1) > M_PI) a1 += 2.0 * M_PI;
+
+	float res = a1 * weight_a1 + a2 * (1.0 - weight_a1);
+	utils_norm_angle_rad(&res);
+	return res;
 }
 
 /**
@@ -221,6 +211,48 @@ float utils_fast_atan2(float y, float x) {
 	} else {
 		return(angle);
 	}
+}
+
+float utils_fast_sin(float angle) {
+	while (angle < -M_PI) {
+		angle += 2.0 * M_PI;
+	}
+
+	while (angle >  M_PI) {
+		angle -= 2.0 * M_PI;
+	}
+
+	float res = 0.0;
+
+	if (angle < 0.0) {
+		res = 1.27323954 * angle + 0.405284735 * angle * angle;
+	} else {
+		res = 1.27323954 * angle - 0.405284735 * angle * angle;
+	}
+
+	return res;
+}
+
+float utils_fast_cos(float angle) {
+	angle += 0.5 * M_PI;
+
+	while (angle < -M_PI) {
+		angle += 2.0 * M_PI;
+	}
+
+	while (angle >  M_PI) {
+		angle -= 2.0 * M_PI;
+	}
+
+	float res = 0.0;
+
+	if (angle < 0.0) {
+		res = 1.27323954 * angle + 0.405284735 * angle * angle;
+	} else {
+		res = 1.27323954 * angle - 0.405284735 * angle * angle;
+	}
+
+	return res;
 }
 
 /**

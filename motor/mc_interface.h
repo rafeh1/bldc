@@ -25,7 +25,7 @@
 #include "datatypes.h"
 
 // Functions
-void mc_interface_init(void);
+void mc_interface_init(bool reset_conf);
 int mc_interface_motor_now(void);
 void mc_interface_select_motor_thread(int motor);
 int mc_interface_get_motor_thread(void);
@@ -51,6 +51,10 @@ void mc_interface_set_current_rel(float val);
 void mc_interface_set_brake_current_rel(float val);
 void mc_interface_set_handbrake(float current);
 void mc_interface_set_handbrake_rel(float val);
+void mc_interface_set_openloop_current(float current, float rpm);
+void mc_interface_set_openloop_phase(float current, float phase);
+void mc_interface_set_openloop_duty(float dutyCycle, float rpm);
+void mc_interface_set_openloop_duty_phase(float dutyCycle, float phase);
 int mc_interface_set_tachometer_value(int steps);
 void mc_interface_brake_now(void);
 void mc_interface_release_motor(void);
@@ -92,8 +96,10 @@ float mc_interface_get_battery_level(float *wh_left);
 float mc_interface_get_speed(void);
 float mc_interface_get_distance(void);
 float mc_interface_get_distance_abs(void);
+void mc_interface_override_wheel_speed(bool ovr, float speed);
 
 setup_values mc_interface_get_setup_values(void);
+volatile gnss_data *mc_interface_gnss(void);
 
 // odometer
 uint64_t mc_interface_get_odometer(void);
@@ -102,6 +108,8 @@ void mc_interface_set_odometer(uint64_t new_odometer_meters);
 void mc_interface_ignore_input(int time_ms);
 
 void mc_interface_set_current_off_delay(float delay_sec);
+
+void mc_interface_override_temp_motor(float temp);
 
 void mc_interface_ignore_input_both(int time_ms);
 void mc_interface_release_motor_override_both(void);
@@ -125,7 +133,7 @@ void mc_interface_stat_reset(void);
 void mc_interface_set_fault_info(const char *str, int argn, float arg0, float arg1);
 void mc_interface_fault_stop(mc_fault_code fault, bool is_second_motor, bool is_isr);
 int mc_interface_try_input(void);
-void mc_interface_mc_timer_isr(bool is_second_motor);
+void mc_interface_mc_timer_isr(bool is_second_motor, float dt);
 
 // Interrupt handlers
 void mc_interface_adc_inj_int_handler(void);
@@ -133,6 +141,8 @@ void mc_interface_adc_inj_int_handler(void);
 // External variables
 extern volatile uint16_t ADC_Value[];
 extern volatile float ADC_curr_norm_value[];
+extern volatile float ADC_curr_raw[];
+
 
 // Common fixed parameters
 #ifndef HW_DEAD_TIME_NSEC

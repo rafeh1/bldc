@@ -36,10 +36,12 @@
 #include "ch.h"
 #include "hal.h"
 
+#include "i2c_bb.h"
+#include "spi_bb.h"
+
 void lsm6ds3_set_rate_hz(int hz);
 void lsm6ds3_set_filter(IMU_FILTER f);
-void lsm6ds3_init(stm32_gpio_t *sda_gpio, int sda_pin,
-		stm32_gpio_t *scl_gpio, int scl_pin,
+void lsm6ds3_init(i2c_bb_state *i2c_state, spi_bb_state *spi_state, SPIDriver *spi_hw,
 		stkalign_t *work_area, size_t work_area_size);
 void lsm6ds3_set_read_callback(void(*func)(float *accel, float *gyro, float *mag));
 void lsm6ds3_stop(void);
@@ -800,7 +802,7 @@ typedef enum {
 } LSM6DS3_ACC_GYRO_BOOT_t;
 
 /*******************************************************************************
-* Register      : CTRL4_C
+* Register      : CTRL4_C (Non TR-C Variant!)
 * Address       : 0X13
 * Bit Group Name: STOP_ON_FTH
 * Permission    : RW
@@ -811,7 +813,7 @@ typedef enum {
 } LSM6DS3_ACC_GYRO_STOP_ON_FTH_t;
 
 /*******************************************************************************
-* Register      : CTRL4_C
+* Register      : CTRL4_C (Non TR-C Variant!)
 * Address       : 0X13
 * Bit Group Name: MODE3_EN
 * Permission    : RW
@@ -820,6 +822,17 @@ typedef enum {
 	LSM6DS3_ACC_GYRO_MODE3_EN_DISABLED 		 = 0x00,
 	LSM6DS3_ACC_GYRO_MODE3_EN_ENABLED 		 = 0x02,
 } LSM6DS3_ACC_GYRO_MODE3_EN_t;
+
+/*******************************************************************************
+* Register      : CTRL4_C TR-C Variant ONLY!
+* Address       : 0X13
+* Bit Group Name: LPF1_SEL_G (Enable gyroscope digital lowpass filter LPF1)
+* Permission    : RW
+*******************************************************************************/
+typedef enum {
+	LSM6DS3_ACC_GYRO_LPF1_SEL_G_DISABLED		 = 0x00,
+	LSM6DS3_ACC_GYRO_LPF1_SEL_G_ENABLED 		 = 0x02,
+} LSM6DS3_ACC_GYRO_LPF1_SEL_G_t;
 
 /*******************************************************************************
 * Register      : CTRL4_C
@@ -844,7 +857,7 @@ typedef enum {
 } LSM6DS3_ACC_GYRO_DRDY_MSK_t;
 
 /*******************************************************************************
-* Register      : CTRL4_C
+* Register      : CTRL4_C (Non TR-C Variant!)
 * Address       : 0X13
 * Bit Group Name: FIFO_TEMP_EN
 * Permission    : RW
@@ -877,7 +890,7 @@ typedef enum {
 } LSM6DS3_ACC_GYRO_SLEEP_G_t;
 
 /*******************************************************************************
-* Register      : CTRL4_C
+* Register      : CTRL4_C (Non TR-C Variant!)
 * Address       : 0X13
 * Bit Group Name: BW_SCAL_ODR
 * Permission    : RW

@@ -3,6 +3,7 @@
 build
 tools
 downloads
+package/
 
 .dep
 .project
@@ -16,3 +17,6 @@ workspace.code-workspace
 *.pro.shared
 
 .vscode
+
+.cache
+compile_commands.json

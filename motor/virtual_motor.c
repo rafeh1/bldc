@@ -126,7 +126,7 @@ void virtual_motor_set_configuration(volatile mc_configuration *conf){
 	virtual_motor.pole_pairs = m_conf->si_motor_poles / 2;
 	virtual_motor.km = 1.5 * virtual_motor.pole_pairs;
 #ifdef HW_HAS_PHASE_SHUNTS
-	if (m_conf->foc_sample_v0_v7) {
+	if (m_conf->foc_control_sample_mode == FOC_CONTROL_SAMPLE_MODE_V0_V7) {
 		virtual_motor.Ts = (1.0 / m_conf->foc_f_zv) ;
 	} else {
 		virtual_motor.Ts = (1.0 / (m_conf->foc_f_zv / 2.0));
@@ -218,7 +218,8 @@ static void connect_virtual_motor(float ml , float J, float Vbus){
 		utils_fast_sincos_better(virtual_motor.phi, (float*)&virtual_motor.sin_phi,
 														(float*)&virtual_motor.cos_phi);
 
-		if(m_conf->foc_sensor_mode == FOC_SENSOR_MODE_ENCODER){
+		if(m_conf->foc_sensor_mode == FOC_SENSOR_MODE_ENCODER ||
+				m_conf->foc_sensor_mode == FOC_SENSOR_MODE_ENCODER_AB){
 			encoder_deinit();
 		}
 	}
@@ -273,7 +274,8 @@ static void disconnect_virtual_motor( void ){
 
 		ADC_Init(ADC1, &ADC_InitStructure);
 
-		if (m_conf->foc_sensor_mode == FOC_SENSOR_MODE_ENCODER) {
+		if (m_conf->foc_sensor_mode == FOC_SENSOR_MODE_ENCODER ||
+				m_conf->foc_sensor_mode == FOC_SENSOR_MODE_ENCODER_AB) {
 			encoder_deinit();
 			encoder_init(m_conf);
 		}
