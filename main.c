@@ -339,6 +339,7 @@ int main(void) {
 	mempools_init();
 	events_init();
 	timer_init(); // Initialize timer here to allow I2C in hw_init
+	password_init();
 	hw_init_gpio();
 	LED_RED_OFF();
 	LED_GREEN_OFF();
