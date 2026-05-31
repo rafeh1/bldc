@@ -177,8 +177,24 @@ static void terminal_cmd_lock_system(int argc, const char **argv) {
     (void)argv;
 
     if (password_system_enable) {
+						
+									 
+												 
+								  
+															   
+																		   
+				
+					
+																	
+		
+			 
+				
         system_locked = true;
         commands_printf("system has been locked\r\n");
+		 
+		
+					 
+				  
     } else {
         commands_printf("password system is disabled, you need first to enable it by the \"ul <password> enable\" command.");
     }
