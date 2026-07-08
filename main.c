@@ -339,12 +339,13 @@ int main(void) {
 	mempools_init();
 	events_init();
 	timer_init(); // Initialize timer here to allow I2C in hw_init
-	password_init();
+				 
 	hw_init_gpio();
 	LED_RED_OFF();
 	LED_GREEN_OFF();
 
 	conf_general_init();
+	password_init(); // Must run after conf_general_init() so EEPROM emulation is ready
 
 	if (flash_helper_verify_flash_memory() == FAULT_CODE_FLASH_CORRUPTION)	{
 		// Loop here, it is not safe to run any code

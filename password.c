@@ -12,7 +12,7 @@
 #include "stdio.h"
 #include "conf_general.h"
 
-#define EEPROM_ADDR_USER_PASSWORD              1
+#define EEPROM_ADDR_USER_PASSWORD              0
 static volatile uint8_t user_password[40];
 static volatile uint8_t user_password_read[10];
 
@@ -37,15 +37,15 @@ static void terminal_cmd_enter_user_password(int argc, const char **argv) {
         strcpy((char *)user_password, "Calibike");
 
         // Store data in eeprom
-        conf_general_store_eeprom_var_hw((eeprom_var *)user_password, EEPROM_ADDR_USER_PASSWORD);
-        conf_general_store_eeprom_var_hw((eeprom_var *)(user_password + 4), EEPROM_ADDR_USER_PASSWORD + 1);
+        conf_general_store_eeprom_var_custom((eeprom_var *)user_password, EEPROM_ADDR_USER_PASSWORD);
+        conf_general_store_eeprom_var_custom((eeprom_var *)(user_password + 4), EEPROM_ADDR_USER_PASSWORD + 1);
 
         // initialize password system enable to false = 0
         uint8_t index;
         for (index = 0; index < 4; index++) {
             pass_system_enable[index] = 0;
         }
-        conf_general_store_eeprom_var_hw((eeprom_var *)(pass_system_enable), EEPROM_ADDR_PASSWORD_SYSTEM_ENABLE);
+        conf_general_store_eeprom_var_custom((eeprom_var *)(pass_system_enable), EEPROM_ADDR_PASSWORD_SYSTEM_ENABLE);
     }
 
     if (argc == 3) {
@@ -62,8 +62,8 @@ static void terminal_cmd_enter_user_password(int argc, const char **argv) {
                 (strncmp((const char *)system_enable_argument, "disable", 7) == 0)) {
 
                 // Read stored password in eeprom
-                conf_general_read_eeprom_var_hw((eeprom_var *)user_password_read, EEPROM_ADDR_USER_PASSWORD);
-                conf_general_read_eeprom_var_hw((eeprom_var *)(user_password_read + 4), EEPROM_ADDR_USER_PASSWORD + 1);
+                conf_general_read_eeprom_var_custom((eeprom_var *)user_password_read, EEPROM_ADDR_USER_PASSWORD);
+                conf_general_read_eeprom_var_custom((eeprom_var *)(user_password_read + 4), EEPROM_ADDR_USER_PASSWORD + 1);
 
                 if (strncmp((const char *)user_password, (const char *)user_password_read, 8) == 0) {
                     system_locked = false;
@@ -86,7 +86,7 @@ static void terminal_cmd_enter_user_password(int argc, const char **argv) {
                         commands_printf("password system is disabled");
                     }
 
-                    conf_general_store_eeprom_var_hw((eeprom_var *)(pass_system_enable), EEPROM_ADDR_PASSWORD_SYSTEM_ENABLE);
+                    conf_general_store_eeprom_var_custom((eeprom_var *)(pass_system_enable), EEPROM_ADDR_PASSWORD_SYSTEM_ENABLE);
 
                 } else {
                     commands_printf("wrong password, it does not match current password");
@@ -108,8 +108,8 @@ static void terminal_cmd_enter_user_password(int argc, const char **argv) {
             } else {
 
                 // Read stored password in eeprom
-                conf_general_read_eeprom_var_hw((eeprom_var *)user_password_read, EEPROM_ADDR_USER_PASSWORD);
-                conf_general_read_eeprom_var_hw((eeprom_var *)(user_password_read + 4), EEPROM_ADDR_USER_PASSWORD + 1);
+                conf_general_read_eeprom_var_custom((eeprom_var *)user_password_read, EEPROM_ADDR_USER_PASSWORD);
+                conf_general_read_eeprom_var_custom((eeprom_var *)(user_password_read + 4), EEPROM_ADDR_USER_PASSWORD + 1);
 
                 if (strncmp((const char *)user_password, (const char *)user_password_read, 8) == 0) {
                     system_locked = false;
@@ -149,12 +149,12 @@ static void terminal_cmd_new_user_password(int argc, const char **argv) {
                     commands_printf("good password, User password will change to: %s", (char *)user_password);
 
                     // Store data in eeprom
-                    conf_general_store_eeprom_var_hw((eeprom_var *)user_password, EEPROM_ADDR_USER_PASSWORD);
-                    conf_general_store_eeprom_var_hw((eeprom_var *)(user_password + 4), EEPROM_ADDR_USER_PASSWORD + 1);
+                    conf_general_store_eeprom_var_custom((eeprom_var *)user_password, EEPROM_ADDR_USER_PASSWORD);
+                    conf_general_store_eeprom_var_custom((eeprom_var *)(user_password + 4), EEPROM_ADDR_USER_PASSWORD + 1);
 
                     // read back written data
-                    conf_general_read_eeprom_var_hw((eeprom_var *)user_password_read, EEPROM_ADDR_USER_PASSWORD);
-                    conf_general_read_eeprom_var_hw((eeprom_var *)(user_password_read + 4), EEPROM_ADDR_USER_PASSWORD + 1);
+                    conf_general_read_eeprom_var_custom((eeprom_var *)user_password_read, EEPROM_ADDR_USER_PASSWORD);
+                    conf_general_read_eeprom_var_custom((eeprom_var *)(user_password_read + 4), EEPROM_ADDR_USER_PASSWORD + 1);
 
                     commands_printf("password saved:%s", (char *)user_password_read);
                 }
@@ -241,10 +241,10 @@ void password_init(void) {
             terminal_cmd_lock_system);
 
     // check if flash was erased during a firmware upgrade, then initialize the password to Calibike
-    conf_general_read_eeprom_var_hw((eeprom_var *)user_password_read, EEPROM_ADDR_USER_PASSWORD);
-    conf_general_read_eeprom_var_hw((eeprom_var *)(user_password_read + 4), EEPROM_ADDR_USER_PASSWORD + 1);
+    conf_general_read_eeprom_var_custom((eeprom_var *)user_password_read, EEPROM_ADDR_USER_PASSWORD);
+    conf_general_read_eeprom_var_custom((eeprom_var *)(user_password_read + 4), EEPROM_ADDR_USER_PASSWORD + 1);
 
-    conf_general_read_eeprom_var_hw((eeprom_var *)pass_system_enable, EEPROM_ADDR_PASSWORD_SYSTEM_ENABLE);
+    conf_general_read_eeprom_var_custom((eeprom_var *)pass_system_enable, EEPROM_ADDR_PASSWORD_SYSTEM_ENABLE);
 
     if ((user_password_read[0] == 0) &&
         (user_password_read[1] == 0) &&
